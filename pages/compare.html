@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Compare Colleges — CampusCopilot AI</title>
+  <link rel="stylesheet" href="../css/style.css" />
+</head>
+<body>
+<div class="page-wrapper">
+  <div class="container">
+    <div class="page-header">
+      <div class="badge">⚖️ College Comparator</div>
+      <h1>Compare Any Two Colleges</h1>
+      <p>Stop guessing. Get a detailed AI analysis of two colleges head-to-head — placements, culture, fees, and a final verdict.</p>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem;">
+      <div class="card">
+        <div class="card-title">🅰️ College One</div>
+        <div class="form-group">
+          <label>College Name</label>
+          <input type="text" id="college1" placeholder="e.g. VIT Vellore" />
+        </div>
+        <div class="form-group">
+          <label>Branch (optional)</label>
+          <input type="text" id="branch1" placeholder="e.g. CSE" />
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">🅱️ College Two</div>
+        <div class="form-group">
+          <label>College Name</label>
+          <input type="text" id="college2" placeholder="e.g. MIT-WPU Pune" />
+        </div>
+        <div class="form-group">
+          <label>Branch (optional)</label>
+          <input type="text" id="branch2" placeholder="e.g. CSE AI" />
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">🎯 Your Priority</div>
+      <div class="form-group">
+        <label>What matters most to you?</label>
+        <select id="priority">
+          <option>Placements & Salary</option>
+          <option>Brand Name & Reputation</option>
+          <option>Coding & Tech Culture</option>
+          <option>Value for Money (ROI)</option>
+          <option>Campus Life & Hostel</option>
+          <option>Research Opportunities</option>
+          <option>Startups & Entrepreneurship</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Your career goal</label>
+        <input type="text" id="goal" placeholder="e.g. Product Engineer at a top startup" />
+      </div>
+      <button class="btn btn-primary" id="compare-btn" onclick="compareColleges()">
+        ⚖️ Compare Now
+      </button>
+    </div>
+
+    <div class="loading-dots" id="loading">
+      <div class="dot"></div><div class="dot"></div><div class="dot"></div>
+      <span style="margin-left:8px;color:var(--text-muted)">AI is comparing colleges…</span>
+    </div>
+
+    <div class="response-area md" id="response"></div>
+  </div>
+</div>
+
+<script src="../js/shell.js"></script>
+<script src="../js/groq.js"></script>
+<script>
+injectShell('compare');
+
+const SYSTEM = `You are an expert Indian college counselor. Compare two colleges in this exact format:
+
+## ⚖️ [College A] vs [College B]
+
+| Parameter | [College A] | [College B] |
+|-----------|-------------|-------------|
+| Avg Placement | ₹X LPA | ₹X LPA |
+| Fees/Year | ₹X lakh | ₹X lakh |
+| NIRF Rank | #X | #X |
+| Coding Culture | ⭐⭐⭐⭐☆ | ⭐⭐⭐☆☆ |
+| Campus Life | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐☆ |
+| ROI | ⭐⭐⭐⭐☆ | ⭐⭐⭐⭐⭐ |
+
+## 🟢 [College A] Strengths
+- Point 1
+- Point 2
+- Point 3
+
+## 🔴 [College A] Weaknesses
+- Point 1
+- Point 2
+
+## 🟢 [College B] Strengths
+- Point 1
+- Point 2
+- Point 3
+
+## 🔴 [College B] Weaknesses
+- Point 1
+- Point 2
+
+## 🎯 Final Verdict
+**Choose [College X] if:** you want [reason].
+**Choose [College Y] if:** you want [reason].
+**Overall Winner:** [College Name] — with a one-paragraph explanation why, given the student's specific priority.
+
+Be honest. Use real known data where possible.`;
+
+async function compareColleges() {
+  const btn = document.getElementById('compare-btn');
+  const c1 = document.getElementById('college1').value.trim();
+  const c2 = document.getElementById('college2').value.trim();
+  if (!c1 || !c2) { alert('Please enter both college names.'); return; }
+
+  const userMsg = `
+College A: ${c1} ${document.getElementById('branch1').value ? '('+document.getElementById('branch1').value+')' : ''}
+College B: ${c2} ${document.getElementById('branch2').value ? '('+document.getElementById('branch2').value+')' : ''}
+Student's priority: ${document.getElementById('priority').value}
+Career goal: ${document.getElementById('goal').value}
+
+Give a detailed comparison.`;
+
+  btn.disabled = true;
+  btn.textContent = 'Comparing…';
+  showLoading('loading');
+  const resp = document.getElementById('response');
+  resp.classList.add('visible');
+  resp.innerHTML = '';
+
+  try {
+    await askGroq(SYSTEM, userMsg, (partial) => {
+      resp.innerHTML = renderMarkdown(partial);
+    });
+  } catch(e) {
+    resp.innerHTML = `<span style="color:var(--error)">⚠️ ${e.message}</span>`;
+  } finally {
+    hideLoading('loading');
+    btn.disabled = false;
+    btn.textContent = '⚖️ Compare Now';
+  }
+}
+</script>
+</body>
+</html>

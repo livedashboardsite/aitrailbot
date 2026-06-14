@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Interview Coach — CampusCopilot AI</title>
+  <link rel="stylesheet" href="../css/style.css" />
+</head>
+<body>
+<div class="page-wrapper" style="display:flex;flex-direction:column;height:100vh;">
+
+  <!-- Setup Panel -->
+  <div id="setup-panel" style="padding-top:60px">
+    <div class="container">
+      <div class="page-header">
+        <div class="badge">🎤 Interview Coach</div>
+        <h1>Practice with an AI Interviewer</h1>
+        <p>Live interview simulation. Answer questions, get scored on content, grammar, and confidence after each response.</p>
+      </div>
+
+      <div class="card">
+        <div class="card-title">⚙️ Interview Setup</div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Interview Type</label>
+            <select id="int-type">
+              <option>Technical (DSA + CS Fundamentals)</option>
+              <option>HR / Behavioral</option>
+              <option>System Design (Beginner)</option>
+              <option>Project-based</option>
+              <option>Full Mock Interview</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Company Type</label>
+            <select id="int-company">
+              <option>Startup</option>
+              <option>MNC (TCS, Infosys)</option>
+              <option>Product Company (Razorpay, Flipkart)</option>
+              <option>FAANG</option>
+              <option>Any / General</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Role</label>
+          <input type="text" id="int-role" placeholder="e.g. SDE Intern, Data Science Fresher" />
+        </div>
+        <button class="btn btn-primary" onclick="startInterview()">🎤 Start Interview</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Interview Panel -->
+  <div id="interview-panel" style="display:none;flex:1;flex-direction:column;padding-top:60px">
+    <div style="padding:0.75rem 1.5rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;background:var(--bg)">
+      <div style="font-family:var(--font-display);font-size:0.95rem;font-weight:600" id="interview-title">Interview</div>
+      <div style="display:flex;gap:0.75rem;align-items:center">
+        <span id="q-counter" style="color:var(--text-muted);font-size:0.82rem">Question 1</span>
+        <button class="btn btn-secondary" style="padding:0.4rem 0.9rem;font-size:0.82rem" onclick="endInterview()">End & Get Score</button>
+      </div>
+    </div>
+
+    <div class="chat-page-messages" id="int-messages"></div>
+
+    <div style="border-top:1px solid var(--border);padding:1rem 1.5rem;background:var(--bg);max-width:800px;width:100%;margin:0 auto;">
+      <div style="display:flex;gap:0.75rem;align-items:flex-end">
+        <textarea id="int-input" class="" rows="3" placeholder="Type your answer here… Press Ctrl+Enter to submit" style="flex:1;resize:none;padding:0.7rem 1rem;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-family:var(--font-body);font-size:0.9rem;outline:none;"></textarea>
+        <div style="display:flex;flex-direction:column;gap:0.5rem">
+          <button class="btn btn-primary" style="width:auto;padding:0.7rem 1.2rem" onclick="submitAnswer()">Submit →</button>
+          <button class="btn btn-secondary" style="padding:0.5rem 0.75rem;font-size:0.8rem" onclick="skipQuestion()">Skip</button>
+        </div>
+      </div>
+      <div style="margin-top:0.5rem;color:var(--text-dim);font-size:0.78rem">Tip: Answer as you would in a real interview. Be specific and use examples.</div>
+    </div>
+  </div>
+
+</div>
+
+<script src="../js/shell.js"></script>
+<script src="../js/groq.js"></script>
+<script>
+injectShell('interview');
+
+let interviewState = {
+  type: '', company: '', role: '',
+  questionCount: 0,
+  history: []
+};
+
+const INTERVIEWER_SYSTEM = `You are a professional technical interviewer from a top Indian tech company.
+Your job is to conduct a realistic interview. After the candidate answers:
+
+1. Give honest feedback in this format:
+**Feedback:**
+- Content: X/10 — [specific comment]
+- Clarity: X/10 — [specific comment]  
+- Confidence: X/10 — [specific comment]
+**What was good:** [1–2 points]
+**What to improve:** [1–2 points]
+
+2. Then ask the NEXT question naturally (say "Alright, next question:" or "Good. Let's move on:").
+
+Keep a professional but encouraging tone. Ask realistic questions for the role and company type.
+Start by greeting and asking the first question immediately.`;
+
+async function startInterview() {
+  const type = document.getElementById('int-type').value;
+  const company = document.getElementById('int-company').value;
+  const role = document.getElementById('int-role').value || 'Software Engineer';
+
+  interviewState = { type, company, role, questionCount: 0, history: [] };
+
+  document.getElementById('setup-panel').style.display = 'none';
+  const panel = document.getElementById('interview-panel');
+  panel.style.display = 'flex';
+  panel.style.flexDirection = 'column';
+  document.getElementById('interview-title').textContent = `${type} · ${company}`;
+
+  const firstMsg = `Start a ${type} interview for the role of ${role} at ${company}. 
+Greet the candidate briefly and ask your first question immediately. Keep it real.`;
+
+  addIntMsg('bot', '...');
+  try {
+    interviewState.history.push({ role: 'user', content: firstMsg });
+    const reply = await askGroq(INTERVIEWER_SYSTEM, firstMsg, (partial) => {
+      document.querySelector('.chat-page-msg.bot:last-child').textContent = partial;
+      scrollMessages();
+    });
+    interviewState.history.push({ role: 'assistant', content: reply });
+    interviewState.questionCount++;
+    updateCounter();
+  } catch(e) {
+    document.querySelector('.chat-page-msg.bot:last-child').textContent = '⚠️ Error starting interview. Check API key.';
+  }
+}
+
+async function submitAnswer() {
+  const input = document.getElementById('int-input');
+  const answer = input.value.trim();
+  if (!answer) return;
+
+  addIntMsg('user', answer);
+  input.value = '';
+
+  interviewState.history.push({ role: 'user', content: answer });
+
+  const botMsg = addIntMsg('bot', '...');
+  try {
+    const context = interviewState.history.map(m => `${m.role === 'user' ? 'CANDIDATE' : 'INTERVIEWER'}: ${m.content}`).join('\n\n');
+    const reply = await askGroq(INTERVIEWER_SYSTEM, context + '\n\nCANDIDATE: ' + answer, (partial) => {
+      botMsg.textContent = partial;
+      scrollMessages();
+    });
+    interviewState.history.push({ role: 'assistant', content: reply });
+    interviewState.questionCount++;
+    updateCounter();
+  } catch(e) {
+    botMsg.textContent = '⚠️ Error. Try again.';
+  }
+}
+
+async function skipQuestion() {
+  addIntMsg('user', '[Skipped this question]');
+  const botMsg = addIntMsg('bot', '...');
+  const context = interviewState.history.map(m => `${m.role === 'user' ? 'CANDIDATE' : 'INTERVIEWER'}: ${m.content}`).join('\n\n');
+  try {
+    const reply = await askGroq(INTERVIEWER_SYSTEM, context + '\n\nCANDIDATE: [Skipped — please move to the next question]', (partial) => {
+      botMsg.textContent = partial;
+      scrollMessages();
+    });
+    interviewState.history.push({ role: 'assistant', content: reply });
+  } catch(e) {
+    botMsg.textContent = '⚠️ Error.';
+  }
+}
+
+async function endInterview() {
+  const panel = document.getElementById('interview-panel');
+  const endMsg = addIntMsg('bot', 'Calculating your final score…');
+
+  const context = interviewState.history.map(m => `${m.role === 'user' ? 'CANDIDATE' : 'INTERVIEWER'}: ${m.content}`).join('\n\n');
+  const scorePrompt = `Based on this entire interview, give a final performance report:
+
+## 🎯 Final Interview Report
+
+**Overall Score: XX/100**
+
+| Area | Score |
+|------|-------|
+| Technical Knowledge | X/10 |
+| Communication | X/10 |
+| Problem Solving | X/10 |
+| Confidence | X/10 |
+| Depth of Answers | X/10 |
+
+### 🏆 Strongest Points
+- Point 1
+- Point 2
+
+### 📈 Areas to Improve
+- Area 1 with specific advice
+- Area 2
+
+### 🎯 Verdict
+**Hire / Maybe / Not Yet** — and why in 2–3 sentences.
+
+### 📚 What to Study Next
+3–5 specific topics to work on before the next interview.`;
+
+  try {
+    const reply = await askGroq('You are an interview evaluator. Give a final interview scorecard.', context + '\n\n' + scorePrompt, (partial) => {
+      endMsg.innerHTML = renderMarkdown(partial);
+      endMsg.classList.add('md');
+      scrollMessages();
+    });
+  } catch(e) {
+    endMsg.textContent = '⚠️ Error generating report.';
+  }
+
+  document.getElementById('int-input').disabled = true;
+  document.querySelector('[onclick="submitAnswer()"]').disabled = true;
+}
+
+function addIntMsg(type, text) {
+  const msgs = document.getElementById('int-messages');
+  const div = document.createElement('div');
+  div.className = `chat-page-msg ${type}`;
+  div.textContent = text;
+  msgs.appendChild(div);
+  scrollMessages();
+  return div;
+}
+
+function scrollMessages() {
+  const msgs = document.getElementById('int-messages');
+  msgs.scrollTop = msgs.scrollHeight;
+}
+
+function updateCounter() {
+  document.getElementById('q-counter').textContent = `Question ${interviewState.questionCount}`;
+}
+
+document.addEventListener('keydown', e => {
+  if (e.ctrlKey && e.key === 'Enter') submitAnswer();
+});
+</script>
+</body>
+</html>

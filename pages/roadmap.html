@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Career Roadmap — CampusCopilot AI</title>
+  <link rel="stylesheet" href="../css/style.css" />
+</head>
+<body>
+<div class="page-wrapper">
+  <div class="container">
+    <div class="page-header">
+      <div class="badge">🗺️ Career Roadmap</div>
+      <h1>Your 4-Year Engineering Roadmap</h1>
+      <p>Tell us your goal. Get a semester-by-semester plan covering skills, projects, internships, and placement prep.</p>
+    </div>
+
+    <div class="card">
+      <div class="card-title">🎯 Your Goal</div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Target Career Role</label>
+          <select id="role">
+            <option>Software Development Engineer (SDE)</option>
+            <option>Machine Learning / AI Engineer</option>
+            <option>Data Scientist / Data Analyst</option>
+            <option>Full Stack Developer</option>
+            <option>DevOps / Cloud Engineer</option>
+            <option>Cybersecurity Engineer</option>
+            <option>Product Manager</option>
+            <option>Startup Founder</option>
+            <option>Research / Higher Studies (MS/MTech)</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Target Company Type</label>
+          <select id="company">
+            <option>FAANG / Big Tech (Google, Amazon, etc.)</option>
+            <option>Indian Unicorn (Razorpay, CRED, etc.)</option>
+            <option>MNC (TCS, Infosys, Wipro)</option>
+            <option>Early Stage Startup</option>
+            <option>Government / PSU</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label>Branch</label>
+          <select id="branch">
+            <option>Computer Science (CSE)</option>
+            <option>CSE – AI/ML</option>
+            <option>Information Technology</option>
+            <option>Electronics & Communication</option>
+            <option>Mechanical</option>
+            <option>Other</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Current Skills (if any)</label>
+          <input type="text" id="skills" placeholder="e.g. Python, HTML, basic C++" />
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>Anything specific you want in the roadmap?</label>
+        <textarea id="extra" rows="2" placeholder="e.g. Focus on open source, I want to do MBA later, interested in Web3…"></textarea>
+      </div>
+
+      <button class="btn btn-primary" id="roadmap-btn" onclick="getRoadmap()">
+        🗺️ Generate My Roadmap
+      </button>
+    </div>
+
+    <div class="loading-dots" id="loading">
+      <div class="dot"></div><div class="dot"></div><div class="dot"></div>
+      <span style="margin-left:8px;color:var(--text-muted)">Building your personalized roadmap…</span>
+    </div>
+
+    <div class="response-area md" id="response"></div>
+  </div>
+</div>
+
+<script src="../js/shell.js"></script>
+<script src="../js/groq.js"></script>
+<script>
+injectShell('roadmap');
+
+const SYSTEM = `You are a senior software engineer and career mentor. Create a detailed 4-year engineering college roadmap.
+
+Use this EXACT format:
+
+## 🗺️ 4-Year Roadmap: [Role] at [Company Type]
+
+---
+
+## 📅 Year 1 — Foundation
+**Theme:** Build the base
+
+### Semester 1
+- **Skills:** List 3–4 specific skills/topics
+- **Projects:** 1 beginner project idea with clear description
+- **Habits:** 2 habits to build
+
+### Semester 2
+- **Skills:** List 3–4 skills
+- **Projects:** 1 project idea
+- **Milestone:** What should be achieved by end of Year 1
+
+---
+
+## 📅 Year 2 — Building
+**Theme:** Go deeper
+
+### Semester 3
+- **Skills:** More advanced topics
+- **Projects:** 1 intermediate project
+- **DSA Goal:** Specific LeetCode / problem-solving target
+
+### Semester 4
+- **Skills:** Framework / specialization
+- **Internship Prep:** What to start doing
+- **Milestone:** End of Year 2 achievement
+
+---
+
+## 📅 Year 3 — Executing
+**Theme:** Real world experience
+
+### Semester 5
+- **Skills:** Advanced / specialization
+- **Internship:** Where to apply and how
+- **Open Source:** Specific contribution advice
+
+### Semester 6
+- **Internship:** Target roles/companies
+- **Projects:** 1 major portfolio project
+- **Milestone:** End of Year 3 achievement
+
+---
+
+## 📅 Year 4 — Placement
+**Theme:** Land the job
+
+### Semester 7
+- **Placement Prep:** DSA, System Design, specific topics
+- **Resume:** What it should look like
+- **Applications:** When and where to apply
+
+### Semester 8
+- **Interviews:** What to expect
+- **Offers:** How to evaluate
+- **Backup Plan:** What if placements don't go as planned
+
+---
+
+## 🛠️ Tools & Resources
+List 8–10 specific resources (courses, platforms, books) with why each one matters.
+
+## 📈 Expected Outcome
+Realistic salary range and role if this roadmap is followed diligently.
+
+Be specific. Name real platforms, tools, technologies. Make it actionable.`;
+
+async function getRoadmap() {
+  const btn = document.getElementById('roadmap-btn');
+  const userMsg = `
+Role: ${document.getElementById('role').value}
+Target Company: ${document.getElementById('company').value}
+Branch: ${document.getElementById('branch').value}
+Current Skills: ${document.getElementById('skills').value || 'None yet'}
+Additional: ${document.getElementById('extra').value || 'None'}
+
+Generate a detailed 4-year roadmap.`;
+
+  btn.disabled = true;
+  btn.textContent = 'Generating…';
+  showLoading('loading');
+  const resp = document.getElementById('response');
+  resp.classList.add('visible');
+  resp.innerHTML = '';
+
+  try {
+    await askGroq(SYSTEM, userMsg, (partial) => {
+      resp.innerHTML = renderMarkdown(partial);
+    });
+  } catch(e) {
+    resp.innerHTML = `<span style="color:var(--error)">⚠️ ${e.message}</span>`;
+  } finally {
+    hideLoading('loading');
+    btn.disabled = false;
+    btn.textContent = '🗺️ Generate My Roadmap';
+  }
+}
+</script>
+</body>
+</html>

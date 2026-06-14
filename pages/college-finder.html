@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>College Finder — CampusCopilot AI</title>
+  <link rel="stylesheet" href="../css/style.css" />
+</head>
+<body>
+<div class="page-wrapper">
+  <div class="container">
+    <div class="page-header">
+      <div class="badge">🏫 College Finder</div>
+      <h1>Find Your Best-Fit College</h1>
+      <p>Tell us about yourself and our AI will recommend the right colleges with clear reasoning.</p>
+    </div>
+
+    <div class="card">
+      <div class="card-title">📋 Your Profile</div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label>Exam</label>
+          <select id="exam">
+            <option>JEE Main</option>
+            <option>JEE Advanced</option>
+            <option>MHT-CET</option>
+            <option>KCET</option>
+            <option>WBJEE</option>
+            <option>COMEDK</option>
+            <option>Other State CET</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Percentile / Rank / Score</label>
+          <input type="text" id="score" placeholder="e.g. 92.6 percentile or Rank 8500" />
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label>Preferred Branch</label>
+          <select id="branch">
+            <option>Computer Science (CSE)</option>
+            <option>CSE – Artificial Intelligence</option>
+            <option>CSE – Data Science</option>
+            <option>Information Technology (IT)</option>
+            <option>Electronics & Communication (ECE)</option>
+            <option>Mechanical Engineering</option>
+            <option>Civil Engineering</option>
+            <option>Electrical Engineering</option>
+            <option>Chemical Engineering</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Category</label>
+          <select id="category">
+            <option>General / Open</option>
+            <option>OBC</option>
+            <option>SC</option>
+            <option>ST</option>
+            <option>EWS</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label>Preferred State</label>
+          <input type="text" id="state" placeholder="e.g. Maharashtra, Karnataka, All India" />
+        </div>
+        <div class="form-group">
+          <label>Total Budget (₹ per year)</label>
+          <select id="budget">
+            <option>Under ₹2 lakh</option>
+            <option>₹2 – 5 lakh</option>
+            <option>₹5 – 10 lakh</option>
+            <option>₹10 – 15 lakh</option>
+            <option>Above ₹15 lakh</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>Career Goal / Dream Role</label>
+        <input type="text" id="goal" placeholder="e.g. AI Engineer at a product company, Data Scientist, Software Developer at FAANG" />
+      </div>
+
+      <div class="form-group">
+        <label>Anything else? (optional)</label>
+        <textarea id="extra" rows="2" placeholder="e.g. Parents prefer Pune, want good hostel, interested in startups…"></textarea>
+      </div>
+
+      <button class="btn btn-primary" id="find-btn" onclick="findColleges()">
+        🔍 Find My Colleges
+      </button>
+    </div>
+
+    <div class="loading-dots" id="loading">
+      <div class="dot"></div><div class="dot"></div><div class="dot"></div>
+      <span style="margin-left:8px;color:var(--text-muted)">AI is analyzing your profile…</span>
+    </div>
+
+    <div class="response-area md" id="response"></div>
+  </div>
+</div>
+
+<script src="../js/shell.js"></script>
+<script src="../js/groq.js"></script>
+<script>
+injectShell('finder');
+
+const SYSTEM = `You are an expert Indian college counselor with deep knowledge of engineering colleges across India.
+A student gives you their profile. Recommend 5 colleges in this EXACT format for each:
+
+## [College Name], [City]
+**Why it fits:** One sentence on why this matches their profile.
+**Placement Avg:** ₹X LPA | **Highest:** ₹X LPA
+**Fees:** ₹X lakh/year
+**Known for:** 3 bullet points (strengths)
+**Watch out for:** 1–2 honest concerns
+**Fit Score:** X/100
+
+After all 5, add a section:
+## 🎯 Our Top Recommendation
+State clearly which one to prioritize and exactly why.
+
+Be honest, specific, and India-focused. Mention real known facts about these colleges.`;
+
+async function findColleges() {
+  const btn = document.getElementById('find-btn');
+  const userMsg = `
+Exam: ${document.getElementById('exam').value}
+Score: ${document.getElementById('score').value}
+Branch: ${document.getElementById('branch').value}
+Category: ${document.getElementById('category').value}
+State Preference: ${document.getElementById('state').value}
+Budget: ${document.getElementById('budget').value}
+Career Goal: ${document.getElementById('goal').value}
+Additional: ${document.getElementById('extra').value}
+
+Recommend 5 colleges with detailed analysis.`;
+
+  btn.disabled = true;
+  btn.textContent = 'Finding…';
+  showLoading('loading');
+  const resp = document.getElementById('response');
+  resp.classList.add('visible');
+  resp.innerHTML = '';
+
+  try {
+    await askGroq(SYSTEM, userMsg, (partial) => {
+      resp.innerHTML = renderMarkdown(partial);
+    });
+  } catch(e) {
+    resp.innerHTML = `<span style="color:var(--error)">⚠️ Error: ${e.message}. Check your API key in js/groq.js</span>`;
+  } finally {
+    hideLoading('loading');
+    btn.disabled = false;
+    btn.textContent = '🔍 Find My Colleges';
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Decision Score — CampusCopilot AI</title>
+  <link rel="stylesheet" href="../css/style.css" />
+</head>
+<body>
+<div class="page-wrapper">
+  <div class="container">
+    <div class="page-header">
+      <div class="badge">🎯 Decision Score · Exclusive Feature</div>
+      <h1>How Well Does This College Fit You?</h1>
+      <p>Enter your profile and a college. Get a personalized Fit Score out of 100 with star ratings across 6 dimensions.</p>
+    </div>
+
+    <div class="card">
+      <div class="card-title">👤 Your Profile</div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>College to Score</label>
+          <input type="text" id="college" placeholder="e.g. MIT-WPU Pune" />
+        </div>
+        <div class="form-group">
+          <label>Branch</label>
+          <input type="text" id="branch" placeholder="e.g. CSE – AI" />
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Your Exam Score / Percentile</label>
+          <input type="text" id="score" placeholder="e.g. 91.4 percentile MHT-CET" />
+        </div>
+        <div class="form-group">
+          <label>Budget per Year</label>
+          <select id="budget">
+            <option>Under ₹2 lakh</option>
+            <option>₹2 – 5 lakh</option>
+            <option>₹5 – 10 lakh</option>
+            <option>₹10 – 15 lakh</option>
+            <option>Above ₹15 lakh</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Career Goal</label>
+          <input type="text" id="goal" placeholder="e.g. AI Engineer at a product company" />
+        </div>
+        <div class="form-group">
+          <label>What matters MOST to you?</label>
+          <select id="priority">
+            <option>Placements & Salary</option>
+            <option>Brand & Reputation</option>
+            <option>Tech & Coding Culture</option>
+            <option>Campus Life & Hostel</option>
+            <option>Research Opportunities</option>
+            <option>Value for Money</option>
+          </select>
+        </div>
+      </div>
+      <button class="btn btn-primary" id="score-btn" onclick="getDecisionScore()">
+        🎯 Calculate My Fit Score
+      </button>
+    </div>
+
+    <div class="loading-dots" id="loading">
+      <div class="dot"></div><div class="dot"></div><div class="dot"></div>
+      <span style="margin-left:8px;color:var(--text-muted)">Calculating your personalized fit score…</span>
+    </div>
+
+    <!-- Score Display -->
+    <div id="score-display" style="display:none">
+      <div class="score-card" id="main-score-card">
+        <div style="color:var(--text-muted);font-size:0.8rem;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:0.5rem">Fit Score</div>
+        <div class="score-number" id="score-num">--</div>
+        <div class="score-label">out of 100</div>
+        <div class="stars" id="score-stars">☆☆☆☆☆</div>
+        <div id="score-verdict" style="color:var(--text-muted);font-size:0.85rem;margin-top:0.5rem"></div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:0.75rem;margin-bottom:1rem" id="dimension-cards"></div>
+    </div>
+
+    <div class="response-area md" id="response"></div>
+  </div>
+</div>
+
+<script src="../js/shell.js"></script>
+<script src="../js/groq.js"></script>
+<script>
+injectShell('');
+
+const SYSTEM = `You are a college fit analyzer. Given a student's profile and a specific college, calculate a personalized Fit Score.
+
+Respond ONLY with this exact JSON (no markdown, no explanation, just the JSON):
+
+{
+  "overall": 78,
+  "verdict": "Strong Fit",
+  "summary": "One sentence why this score",
+  "dimensions": [
+    {"name": "Placements", "score": 8, "comment": "Short specific comment"},
+    {"name": "Budget Fit", "score": 7, "comment": "Short specific comment"},
+    {"name": "Career Alignment", "score": 9, "comment": "Short specific comment"},
+    {"name": "Coding Culture", "score": 7, "comment": "Short specific comment"},
+    {"name": "Campus Life", "score": 6, "comment": "Short specific comment"},
+    {"name": "ROI", "score": 8, "comment": "Short specific comment"}
+  ],
+  "pros": ["Pro 1", "Pro 2", "Pro 3"],
+  "cons": ["Con 1", "Con 2"],
+  "recommendation": "2-3 sentence final recommendation"
+}
+
+All scores out of 10. Overall out of 100. Verdict: "Excellent Fit" (85+), "Strong Fit" (70-84), "Good Fit" (55-69), "Risky Choice" (40-54), "Poor Fit" (<40).`;
+
+function starsFromScore(score, max=10) {
+  const filled = Math.round((score / max) * 5);
+  return '★'.repeat(filled) + '☆'.repeat(5 - filled);
+}
+
+function colorFromScore(score) {
+  if (score >= 80) return 'var(--success)';
+  if (score >= 65) return 'var(--accent)';
+  if (score >= 50) return 'var(--warning)';
+  return 'var(--error)';
+}
+
+async function getDecisionScore() {
+  const btn = document.getElementById('score-btn');
+  const college = document.getElementById('college').value.trim();
+  if (!college) { alert('Enter a college name first.'); return; }
+
+  btn.disabled = true;
+  btn.textContent = 'Calculating…';
+  showLoading('loading');
+  document.getElementById('score-display').style.display = 'none';
+  document.getElementById('response').classList.remove('visible');
+
+  const userMsg = `
+College: ${college}
+Branch: ${document.getElementById('branch').value}
+Student Score: ${document.getElementById('score').value}
+Budget: ${document.getElementById('budget').value}
+Career Goal: ${document.getElementById('goal').value}
+Priority: ${document.getElementById('priority').value}
+
+Calculate the personalized fit score as JSON.`;
+
+  try {
+    let raw = await askGroq(SYSTEM, userMsg, null);
+    raw = raw.trim().replace(/```json|```/g, '').trim();
+    const data = JSON.parse(raw);
+    renderScore(data, college);
+  } catch(e) {
+    const resp = document.getElementById('response');
+    resp.classList.add('visible');
+    resp.innerHTML = `<span style="color:var(--error)">⚠️ ${e.message}. Try again.</span>`;
+  } finally {
+    hideLoading('loading');
+    btn.disabled = false;
+    btn.textContent = '🎯 Calculate My Fit Score';
+  }
+}
+
+function renderScore(data, college) {
+  // Main score
+  document.getElementById('score-num').textContent = data.overall;
+  document.getElementById('score-num').style.color = colorFromScore(data.overall);
+  document.getElementById('score-stars').textContent = starsFromScore(data.overall, 100);
+  document.getElementById('score-verdict').textContent = `${data.verdict} — ${data.summary}`;
+  document.getElementById('score-display').style.display = 'block';
+
+  // Dimension cards
+  const container = document.getElementById('dimension-cards');
+  container.innerHTML = data.dimensions.map(d => `
+    <div class="card" style="text-align:center;padding:1rem">
+      <div style="font-size:0.78rem;color:var(--text-muted);margin-bottom:0.4rem;text-transform:uppercase;letter-spacing:0.04em">${d.name}</div>
+      <div style="font-family:var(--font-display);font-size:1.6rem;font-weight:700;color:${colorFromScore(d.score)}">${d.score}<span style="font-size:0.9rem;color:var(--text-dim)">/10</span></div>
+      <div style="color:#f59e0b;font-size:0.85rem;margin:2px 0">${starsFromScore(d.score)}</div>
+      <div style="font-size:0.75rem;color:var(--text-muted);line-height:1.4;margin-top:0.3rem">${d.comment}</div>
+    </div>
+  `).join('');
+
+  // Detailed response
+  const resp = document.getElementById('response');
+  resp.classList.add('visible');
+  resp.innerHTML = renderMarkdown(`
+## ✅ Why It Works
+${data.pros.map(p => `- ${p}`).join('\n')}
+
+## ⚠️ Watch Out For
+${data.cons.map(c => `- ${c}`).join('\n')}
+
+## 🎯 Final Recommendation
+${data.recommendation}
+  `);
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Reality Check — CampusCopilot AI</title>
+  <link rel="stylesheet" href="../css/style.css" />
+</head>
+<body>
+<div class="page-wrapper">
+  <div class="container">
+    <div class="page-header">
+      <div class="badge">🔍 Reality Check</div>
+      <h1>The Truth About Any College</h1>
+      <p>Get an honest summary of what students typically praise and flag about any college — no marketing fluff.</p>
+    </div>
+
+    <div class="card">
+      <div class="card-title">🏫 Enter College Details</div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>College Name</label>
+          <input type="text" id="college" placeholder="e.g. Symbiosis Institute of Technology, Pune" />
+        </div>
+        <div class="form-group">
+          <label>Branch (optional)</label>
+          <input type="text" id="branch" placeholder="e.g. Computer Science" />
+        </div>
+      </div>
+      <div class="form-group">
+        <label>What do you want to know?</label>
+        <select id="focus">
+          <option>Overall honest review</option>
+          <option>Placements & salary reality</option>
+          <option>Campus life & hostel</option>
+          <option>Faculty & academics quality</option>
+          <option>Coding culture & clubs</option>
+          <option>Fees vs value (ROI)</option>
+        </select>
+      </div>
+      <button class="btn btn-primary" id="reality-btn" onclick="getRealityCheck()">
+        🔍 Get Reality Check
+      </button>
+    </div>
+
+    <div class="loading-dots" id="loading">
+      <div class="dot"></div><div class="dot"></div><div class="dot"></div>
+      <span style="margin-left:8px;color:var(--text-muted)">Analyzing student sentiment…</span>
+    </div>
+
+    <div class="response-area md" id="response"></div>
+  </div>
+</div>
+
+<script src="../js/shell.js"></script>
+<script src="../js/groq.js"></script>
+<script>
+injectShell('reality');
+
+const SYSTEM = `You are a trusted college reviewer summarizing common student experiences at Indian colleges.
+IMPORTANT: Frame everything as patterns you've observed, not first-hand opinions. Be honest and balanced.
+
+Use this exact format:
+
+## 🏫 [College Name] — Reality Check
+
+### ⭐ Overall Rating: X/10
+
+### ✅ What Students Generally Praise
+- **[Category]:** Specific point students appreciate
+- **[Category]:** Specific point
+- **[Category]:** Specific point
+(3–5 points)
+
+### ⚠️ What Students Frequently Flag
+- **[Category]:** Honest concern students commonly raise
+- **[Category]:** Concern
+(2–4 points)
+
+### 📊 Placement Reality
+**Official claim vs Reality:** Explain the gap if any.
+**Who actually gets good packages:** Be specific.
+**Average realistic package:** ₹X LPA (not the inflated figure).
+
+### 🎓 Is It Worth It?
+A 2–3 sentence honest verdict on whether the college justifies its fees and reputation.
+
+### 💡 Pro Tip
+One actionable piece of advice for someone joining this college.
+
+Be honest. Students need real information to make life decisions.`;
+
+async function getRealityCheck() {
+  const btn = document.getElementById('reality-btn');
+  const college = document.getElementById('college').value.trim();
+  if (!college) { alert('Please enter a college name.'); return; }
+
+  const userMsg = `College: ${college}
+Branch: ${document.getElementById('branch').value || 'General'}
+Focus: ${document.getElementById('focus').value}
+
+Give me the honest reality check.`;
+
+  btn.disabled = true;
+  btn.textContent = 'Analyzing…';
+  showLoading('loading');
+  const resp = document.getElementById('response');
+  resp.classList.add('visible');
+  resp.innerHTML = '';
+
+  try {
+    await askGroq(SYSTEM, userMsg, (partial) => {
+      resp.innerHTML = renderMarkdown(partial);
+    });
+  } catch(e) {
+    resp.innerHTML = `<span style="color:var(--error)">⚠️ ${e.message}</span>`;
+  } finally {
+    hideLoading('loading');
+    btn.disabled = false;
+    btn.textContent = '🔍 Get Reality Check';
+  }
+}
+</script>
+</body>
+</html>

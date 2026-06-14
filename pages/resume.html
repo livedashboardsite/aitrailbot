@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Resume Reviewer — CampusCopilot AI</title>
+  <link rel="stylesheet" href="../css/style.css" />
+</head>
+<body>
+<div class="page-wrapper">
+  <div class="container">
+    <div class="page-header">
+      <div class="badge">📄 Resume Reviewer</div>
+      <h1>Get Your Resume Reviewed by AI</h1>
+      <p>Paste your resume text and get instant feedback: score, weak points, missing skills, and specific improvements.</p>
+    </div>
+
+    <div class="card">
+      <div class="card-title">📋 Resume Details</div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Target Role</label>
+          <input type="text" id="role" placeholder="e.g. SDE Intern at a startup" />
+        </div>
+        <div class="form-group">
+          <label>Year of Study</label>
+          <select id="year">
+            <option>1st Year</option>
+            <option>2nd Year</option>
+            <option>3rd Year</option>
+            <option>Final Year</option>
+            <option>Recent Graduate</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Paste Your Resume Content</label>
+        <textarea id="resume" rows="12" placeholder="Paste your resume text here — education, skills, projects, experience, achievements…
+
+Example:
+Name: Prathamesh Thakur
+Education: B.Tech CSE, MIT-WPU Pune, 2025 | CGPA: 8.2
+
+Skills: Python, JavaScript, React, Node.js, MongoDB, Git
+
+Projects:
+- AI Chatbot using Groq API | Built a multi-feature chatbot with streaming
+- Weather App | React + OpenWeatherAPI
+
+…etc"></textarea>
+      </div>
+      <button class="btn btn-primary" id="review-btn" onclick="reviewResume()">
+        📄 Review My Resume
+      </button>
+    </div>
+
+    <div class="loading-dots" id="loading">
+      <div class="dot"></div><div class="dot"></div><div class="dot"></div>
+      <span style="margin-left:8px;color:var(--text-muted)">AI is reviewing your resume…</span>
+    </div>
+
+    <div class="response-area md" id="response"></div>
+  </div>
+</div>
+
+<script src="../js/shell.js"></script>
+<script src="../js/groq.js"></script>
+<script>
+injectShell('resume');
+
+const SYSTEM = `You are a senior hiring manager and resume coach who has reviewed thousands of engineering resumes.
+Review the student's resume honestly and helpfully.
+
+Use this EXACT format:
+
+## 📄 Resume Review
+
+### 📊 Overall Score: XX/100
+
+| Section | Score | Comment |
+|---------|-------|---------|
+| Formatting | X/10 | One-line note |
+| Skills | X/10 | One-line note |
+| Projects | X/10 | One-line note |
+| Experience | X/10 | One-line note |
+| Impact Language | X/10 | One-line note |
+| ATS Compatibility | X/10 | One-line note |
+
+---
+
+### ✅ What's Working Well
+- Point 1 (be specific)
+- Point 2
+- Point 3
+
+### ❌ Critical Issues to Fix
+- **[Issue]:** What's wrong and exactly how to fix it
+- **[Issue]:** Specific fix
+- **[Issue]:** Specific fix
+
+### 🛠️ Skills Gap
+Based on the target role, these skills are missing or underrepresented:
+- Skill 1 (why it matters)
+- Skill 2
+
+### 📝 Line-by-Line Improvements
+Give 3–5 specific rewrites. Show the original and the improved version:
+- Original: "Made a chatbot"
+- Better: "Built an AI chatbot using Groq API with streaming responses, reducing response latency by 40%"
+
+### 🎯 Top 3 Actions This Week
+1. Most important thing to do
+2. Second most important
+3. Third
+
+### 💡 Final Verdict
+2–3 sentences on whether this resume is ready to send and what the candidate should focus on.
+
+Be specific and honest. This person is using this to get a job.`;
+
+async function reviewResume() {
+  const btn = document.getElementById('review-btn');
+  const resume = document.getElementById('resume').value.trim();
+  if (!resume || resume.length < 50) { alert('Please paste your resume content first.'); return; }
+
+  const userMsg = `Target Role: ${document.getElementById('role').value}
+Year: ${document.getElementById('year').value}
+
+RESUME:
+${resume}
+
+Please review this resume thoroughly.`;
+
+  btn.disabled = true;
+  btn.textContent = 'Reviewing…';
+  showLoading('loading');
+  const resp = document.getElementById('response');
+  resp.classList.add('visible');
+  resp.innerHTML = '';
+
+  try {
+    await askGroq(SYSTEM, userMsg, (partial) => {
+      resp.innerHTML = renderMarkdown(partial);
+    });
+  } catch(e) {
+    resp.innerHTML = `<span style="color:var(--error)">⚠️ ${e.message}</span>`;
+  } finally {
+    hideLoading('loading');
+    btn.disabled = false;
+    btn.textContent = '📄 Review My Resume';
+  }
+}
+</script>
+</body>
+</html>

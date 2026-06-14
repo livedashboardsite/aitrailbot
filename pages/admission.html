@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admission Guide — CampusCopilot AI</title>
+  <link rel="stylesheet" href="../css/style.css" />
+</head>
+<body>
+<div class="page-wrapper">
+  <div class="container">
+    <div class="page-header">
+      <div class="badge">📋 Admission Guide</div>
+      <h1>Your Step-by-Step Admission Checklist</h1>
+      <p>Get a complete admission roadmap for any college — documents, deadlines, fee payment steps, and pro tips.</p>
+    </div>
+
+    <div class="card">
+      <div class="card-title">🏫 College Details</div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>College Name</label>
+          <input type="text" id="college" placeholder="e.g. VIT Vellore" />
+        </div>
+        <div class="form-group">
+          <label>Branch</label>
+          <input type="text" id="branch" placeholder="e.g. Computer Science" />
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Admission Through</label>
+          <select id="exam">
+            <option>JEE Main / JoSAA Counselling</option>
+            <option>MHT-CET / CAP Round (Maharashtra)</option>
+            <option>KCET (Karnataka)</option>
+            <option>WBJEE</option>
+            <option>Direct Admission (Management Quota)</option>
+            <option>College's Own Entrance</option>
+            <option>COMEDK</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Category</label>
+          <select id="category">
+            <option>General / Open</option>
+            <option>OBC</option>
+            <option>SC</option>
+            <option>ST</option>
+            <option>EWS</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Specific concerns?</label>
+        <textarea id="concern" rows="2" placeholder="e.g. I'm from another state, need hostel info, scholarship eligibility, fee payment deadlines…"></textarea>
+      </div>
+      <button class="btn btn-primary" id="guide-btn" onclick="getAdmissionGuide()">
+        📋 Get My Admission Checklist
+      </button>
+    </div>
+
+    <div class="loading-dots" id="loading">
+      <div class="dot"></div><div class="dot"></div><div class="dot"></div>
+      <span style="margin-left:8px;color:var(--text-muted)">Preparing your admission guide…</span>
+    </div>
+
+    <div class="response-area md" id="response"></div>
+  </div>
+</div>
+
+<script src="../js/shell.js"></script>
+<script src="../js/groq.js"></script>
+<script>
+injectShell('admission');
+
+const SYSTEM = `You are an expert Indian college admission counselor. Create a detailed, actionable admission guide.
+
+Use this EXACT format:
+
+## 📋 Admission Guide: [College] — [Branch]
+
+### 📅 Typical Admission Timeline
+List 6–8 chronological steps with approximate timeframes:
+- **[Month/Period]:** What happens (e.g., JoSAA Round 1 allotment)
+- etc.
+
+### 📄 Documents Required
+Organize into categories:
+
+**Academic Documents:**
+- [ ] Document 1 (specifics: how many copies, attestation needed?)
+- [ ] Document 2
+- etc.
+
+**Identity & Address:**
+- [ ] Document
+- etc.
+
+**Category-specific (if applicable):**
+- [ ] Document
+
+**College-specific:**
+- [ ] Document
+
+### 💰 Fee Structure Overview
+- **Tuition Fee:** ₹X per year (approximate)
+- **Hostel Fee:** ₹X per year (if applicable)
+- **One-time Fees:** ₹X (admission, caution deposit, etc.)
+- **Payment Deadline:** Typically within X days of allotment
+
+### 🏠 Hostel Process
+Brief explanation of how hostel allotment works at this college.
+
+### 🎓 Scholarship Opportunities
+2–3 scholarships to research (mention what to verify — don't claim eligibility).
+
+### ⚠️ Common Mistakes to Avoid
+- Mistake 1 — why it's costly
+- Mistake 2
+- Mistake 3
+
+### ✅ First Week on Campus
+5 things to do in your first week to start strong.
+
+### 💡 Pro Tips
+3 insider tips that most students wish they knew before joining.
+
+Be practical and India-specific. Note when information should be verified with the college directly.`;
+
+async function getAdmissionGuide() {
+  const btn = document.getElementById('guide-btn');
+  const college = document.getElementById('college').value.trim();
+  if (!college) { alert('Please enter a college name.'); return; }
+
+  const userMsg = `College: ${college}
+Branch: ${document.getElementById('branch').value}
+Admission Through: ${document.getElementById('exam').value}
+Category: ${document.getElementById('category').value}
+Concerns: ${document.getElementById('concern').value || 'None'}
+
+Create a complete admission guide.`;
+
+  btn.disabled = true;
+  btn.textContent = 'Preparing…';
+  showLoading('loading');
+  const resp = document.getElementById('response');
+  resp.classList.add('visible');
+  resp.innerHTML = '';
+
+  try {
+    await askGroq(SYSTEM, userMsg, (partial) => {
+      resp.innerHTML = renderMarkdown(partial);
+    });
+  } catch(e) {
+    resp.innerHTML = `<span style="color:var(--error)">⚠️ ${e.message}</span>`;
+  } finally {
+    hideLoading('loading');
+    btn.disabled = false;
+    btn.textContent = '📋 Get My Admission Checklist';
+  }
+}
+</script>
+</body>
+</html>
