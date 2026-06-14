@@ -1,5 +1,5 @@
 // ─── CONFIG ─────────────────────────────────────────────────────────────────
-const GROQ_API_KEY = "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"; // Replace with your actual key
+const GROQ_API_KEY = "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"; // Replace with your actual key
 const MODEL = "llama3-8b-8192";
 
 // ─── CORE API CALL ──────────────────────────────────────────────────────────
