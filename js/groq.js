@@ -1,9 +1,26 @@
 // ─── CONFIG ─────────────────────────────────────────────────────────────────
-const GROQ_API_KEY = "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"; // Replace with your actual key
 const MODEL = "llama3-8b-8192";
+
+// ─── API KEY PROMPT ──────────────────────────────────────────────────────────
+function getApiKey() {
+  let key = sessionStorage.getItem('groq_key');
+  if (!key) {
+    key = prompt("🔑 Enter your Groq API Key to use CampusCopilot AI:\n\nGet a free key at console.groq.com");
+    if (key && key.trim().startsWith('gsk_')) {
+      sessionStorage.setItem('groq_key', key.trim());
+    } else if (key) {
+      alert("Invalid key. It should start with 'gsk_'. Try again.");
+      return null;
+    }
+  }
+  return key;
+}
 
 // ─── CORE API CALL ──────────────────────────────────────────────────────────
 async function askGroq(systemPrompt, userMessage, onChunk) {
+  const GROQ_API_KEY = getApiKey();
+  if (!GROQ_API_KEY) throw new Error("No API key provided.");
+
   const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
     method: "POST",
     headers: {
@@ -23,6 +40,7 @@ async function askGroq(systemPrompt, userMessage, onChunk) {
   });
 
   if (!response.ok) {
+    sessionStorage.removeItem('groq_key'); // clear bad key
     const err = await response.text();
     throw new Error(`Groq API error: ${err}`);
   }
@@ -68,19 +86,18 @@ function renderMarkdown(text) {
     .replace(/^(\d+)\. (.+)$/gm, '<li>$2</li>')
     .replace(/(<li>.*<\/li>\n?)+/g, m => `<ul>${m}</ul>`)
     .replace(/\n\n+/g, '</p><p>')
-    .replace(/^(?!<[h|u|l|h])/gm, '')
     .replace(/(.+)/s, '<p>$1</p>');
 }
 
 // ─── SHOW / HIDE LOADING ─────────────────────────────────────────────────────
 function showLoading(id) {
   const el = document.getElementById(id);
-  if (el) { el.classList.add('visible'); }
+  if (el) el.classList.add('visible');
 }
 
 function hideLoading(id) {
   const el = document.getElementById(id);
-  if (el) { el.classList.remove('visible'); }
+  if (el) el.classList.remove('visible');
 }
 
 function showResponse(id, html) {
@@ -111,13 +128,11 @@ function initChatWidget() {
 
   fab.addEventListener('click', () => modal.classList.toggle('open'));
   closeBtn.addEventListener('click', () => modal.classList.remove('open'));
-
   sendBtn.addEventListener('click', sendChatMessage);
   input.addEventListener('keydown', e => {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendChatMessage(); }
   });
 
-  // Welcome message
   addBotMessage("👋 Hi! I'm CampusBot. Ask me anything about colleges, careers, or admissions in India!");
 }
 
@@ -159,7 +174,7 @@ async function sendChatMessage() {
     });
     chatHistory.push({ role: 'assistant', content: botDiv.textContent });
   } catch (e) {
-    botDiv.textContent = '⚠️ Error connecting. Check your API key.';
+    botDiv.textContent = '⚠️ Error: ' + e.message;
   }
 }
 
